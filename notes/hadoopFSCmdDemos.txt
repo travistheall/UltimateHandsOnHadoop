@@ -1,0 +1,8 @@
+hadoop fs -ls
+hadoop fs -mkdir ml-100k
+hadoop fs -ls
+wget http://media.sundog-soft.com/hadoop/ml-100k/u.data
+hadoop fs -copyFromLocal u.data ml-100k/u.data
+hadoop fs -ls ml-100k
+hadoop fs -rm ml-100k/u.data
+hadoop fs -rmdir ml-100k
