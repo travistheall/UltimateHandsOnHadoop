@@ -1,0 +1,63 @@
+Lesson Two: RDD Architecture
+This course was developed in collaboration with MetiStream and IBM Analytics.
+After completing this lesson, you should be
+able to understand how Spark generates RDDs, manage partitions to improve RDD performance,
+understand what makes an RDD resilient, understand how RDDs are broken into jobs and stages,
+and serialize tasks. By now you should be familiar with the Resilient
+Distributed Dataset, the fundamental data abstraction in Spark. An RDD is made up of
+multiple partitions. Spark normally determines the number of partitions based on the number
+of CPUs in your cluster. Each partition has a sequence of records which tasks will execute
+on. The partitioning is what enables parallel execution of Spark jobs.
+Recall that an RDD is part of a graph, sometimes referred to as a lineage, that traces its
+history. Spark uses standard Hadoop APIs for input.
+Because of that, it’s able to read from many different data stores in addition to
+HDFS, including the local file system and cloud services like Cloudant, AWS, Google,
+and Azure. Any InputFormat implementation can also be
+used directly by the hadoopFile API for connecting with HBase, MongoDB, Cassandra, and more.
+You can also implement your own custom InputFormats if necessary.
+The partitions in the RDD map to the Hadoop splits as defined by the InputFormat.
+This lets Spark take advantage of data locality when the Spark nodes are deployed on the Hadoop
+Data Nodes. You can also specify a minimum partitioning
+if necessary. Partitioning correlates to the parallelism
+of tasks since each task executes on a single partition of data.
+A key element of performance is balancing partitions with the number of cores on your
+cluster. Here is an example of using the built-in textFile
+API. This is just a convenience function that calls the hadoopFile API, the same way you
+would read a text file in a MapReduce program. The textFile API simply calls the map function
+to discard the key and extract just the Text value from each record (line of text)
+in the file. If we look at the graph of the full RDD you
+can see that the root is a HadoopRDD, then a MappedRDD.
+As we know, each RDD in a graph has a reference to its dependencies, up to the root RDD, which
+depends on nothing. It’s important to know how this affects partitioning. The root RDD
+describes the original partitioning. These partitions are inherited by the child RDDs.
+The transformations of each RDD, such as in the example above, are executed on each partition
+of the parent RDD. However, we will soon see situations where a repartitioning occurs.
+Partitioning can have a huge impact on performance in Spark. There are several factors to be
+consider that we will cover in this lesson. You want your data to be evenly distributed
+across partitions to leverage parallelism and reduce the chance of having a job that
+takes much longer than the others, causing a bottleneck.
+On systems like Hadoop and Cassandra, it’s crucial that their cores line up logically
+with partitions. You don’t want a partition divided between two cores on separate machines,
+for example. The number of partitions should correlate
+to the number of CPU cores in your cluster. Tasks that take a very long time to complete
+might suggest a different partitioning is in order.
+You always want to avoid shuffling, that is, the movement of data between partitions caused
+by certain operations. Shuffling is very expensive performance wise and can even lead to out-of-memory
+errors. The big takeaway here is that there are many
+considerations and trade-offs when designing your cluster. It ultimately depends on your
+data and the type of operations you’ll be doing on it.
+Imagine that you have 4 partitions, with 1000 records each, on a cluster with three cores.
+Each task takes one hour to complete. Only three partitions can be run the task at once,
+so it would take two hours to complete all of them, and for half that time only one core
+is active. Now repartition to three partitions. Each
+task will take longer, since there are more records per partitions, but they can all run
+in parallel. The job finishes after only 80 minutes.
+By default, partitions and the records within them are distributed based on the original
+storage system’s InputFormat. For example, in Hadoop the partitions correspond with HDFS
+cores. RDD operations such as filter and map don’t
+alter partitioning. However in some cases you may want to force
+an increase or decrease in partitions. Repartition will cause a shuffle and redistribute
+partitions evenly. Repartition can be helpful to rebalance after filtering or reducing records
+and to increase parallelism if the input splits are too low for your cluster. Coalesce can
+decrease partitions WITHOUT incurring a shuffle. Coalesce is useful when you want to consolidate
+partitions before outputting to HDFS or external systems, but you lose parallelism.

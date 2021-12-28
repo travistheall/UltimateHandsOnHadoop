@@ -1,0 +1,36 @@
+Here’s an example of the trips and stations RDDs you’ve been using in the labs, cached
+both with and without serialization. While the uncompressed input file was roughly 36MB,
+the persisted dataset is much larger because of the size of the Java objects in memory.
+In contrast the serialized version, using the default Java serializer, only uses 52MB
+of space. The Kryo serializer actually manages to store
+the entire RDD in less space than the original file!
+Kryo is usually very straightforward to set up. Here we see how to set up Kryo for the
+lab exercises. First you create a new SparkConf configuration
+for the app. Then you set the spark serializer parameter to KryoSerializer. You must then
+register the classes in your application that will be serialized, in this case, the Trip
+and Station classes. Finally you initialize spark context with
+the configuration. Now when you use a persist level such as MEMORY_ONLY_SER
+the serialization will be handled by Kryo.
+One common question when people first start working with Spark is if RDDs can be shared
+across applications. Since RDDs are tied to a SparkContext this is not conventionally
+possible. Cue the Tachyon project, a high-speed memory-based Distributed File System that
+comes with Spark. You can use Tachyon to save and read RDDs across SparkContexts in a very
+efficient manner. The experimental OFF_HEAP storage level can also be used to persist
+RDDs just as you would on disk or in RAM of the Spark cluster.
+There are some key configuration parameters you should be familiar with.
+Spark.rdd.compress decides whether or not serialized RDDs should also be compressed.
+spark.shuffle.consolidateFiles consolidates the intermediate files generated during a
+shuffle, creating fewer larger files rather than many small ones potentially improving
+disk I/O. Docs suggest setting this to true on ext4 or xfs filesystems. On ext3 this might
+degrade performance on machines with more than 8 cores.
+spark.shuffle.spill limits the amount of memory used during reduces by spilling data out to
+disk. The spilling threshold is specified by spark.shuffle.memoryFraction. You can also
+set whether or not the spill will be compressed. spark.storage.memoryFraction is how much storage
+can be dedicated to in-memory persistance. spark.storage.unrollFraction is memory dedicated
+to “unrolling” serialized data such as persisted RDDs since they’re stored as one
+large byte-array.
+Having completed this lesson you should be able to
+Understand how and when to cache RDDs,
+understand storage levels and their uses,
+optimize memory usage with serialization options, and share RDDs with Tachyon.
+Proceed to exercise 4 and the next lesson.

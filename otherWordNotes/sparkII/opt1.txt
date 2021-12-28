@@ -1,0 +1,45 @@
+Lesson 3: Optimizing Transformations and Actions
+This course was developed in collaboration
+with MetiStream and IBm Analytics. After completing this lesson you should be
+able to use advanced RDD operations, identify what operations cause shuffling, understand
+how to avoid shuffling when possible, and group, combine, and reduce key value pairs.
+We’ll start by going over some of the more advanced RDD operations available.
+Numeric RDDs have several statistical operations that can be computed such as standard deviation,
+sum, mean, max, min, etc. You can compute a specific operation or call stats() to return
+an object with access to all the values. map partitions is like regular map, except
+the function is at the partition level. Thus each set of values in a partition is mapped
+to zero or more values. One case when these operations are particularly useful is when
+your map function has a high overhead cost per record. For example, if you need to connect
+to a database, you could do it once per partition instead of for each individual record. mapPartitionsWithIndex
+simply adds the index of the partition as a parameter
+foreachPartition - run an action that iterates over each partition. You want to use this
+for batching operations such as submitting to a web service or pushing to external data
+sources. You’d want to do this instead of calling foreach which iterates over each individual
+record. There are a number of operations that can
+be used on extremely large data sets to get approximate values. For example, countApproxDistinct
+will approximate the number of distinct values to within the given standard deviation.
+Fold is a special case of reduce. You pass it an initial zero accumulator and a function.
+The function is a sequential or comparative operation between the RDD element and the
+accumulator, returning the final accumulator. Aggregate is similar to fold, but takes two
+functions. The first runs on each partition. The second combines te results from each partition
+accumulator. countByValue is just a convenience method
+that counts the number of occurrences of each value and collects them in a map. Internally
+it's mapping to a pair RDD and calling countByKey. We can see how it works by revisiting our
+word count example. The second and third lines are identical operations.
+Some operations can only be performed on Key-Value RDDs.
+Reduce by key runs a reduce over all values of a key, then combines the results for each
+key in each partition. Count by key is simply calling reduceByKey,
+but the difference is that it collects the results in a map which is sent back to the
+driver. As such you need to be careful with this action - it's mostly useful as a simple
+way to examine your data and not something you want to use in production.
+Aggregate and fold by key are analogous to their generic counterparts, except that they
+run per key. We will see an example shortly. Group by key groups all values by key, from
+ALL partitions, into memory. This action should trigger warning bells any time you see it
+in a Spark application. Recall that one of the worst culprits of poor performance in
+Spark is shuffling. groupbyKey shuffles everything. It can even cause out-of-memory errors with
+large datasets. avoid using whenever possible. Lookup returns all values for the specified
+key. MapValues applies a map function to each value
+without changing their keys. When you use this instead of regular map, Spark knows that
+any previous partitioning is still valid, and so repartitioning isn't necessary.
+Finally, repartition and sort within partitions does a repartition and sort by key all in
+one step, which is more efficient than calling sort by key after a repartition.

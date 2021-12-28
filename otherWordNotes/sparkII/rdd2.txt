@@ -1,0 +1,57 @@
+When we key an RDD, either by a map or using keyBy, we’re not changing the partitioning.
+All we’ve done is mapped each value to have a key. Those keys may or may not be co-located
+and we have no way of knowing since typically an RDD will not have a partitioner when it’s
+first generated. However, for certain keyed operations or iterative processing it’s
+beneficial to keep records with the same keys co-located. This lets our transformations
+run quickly within the same JVM when operating over the same keys. In order to do that we
+can use either a HashPartitioner or RangePartitioner. In the case of HashPartitioner we specify
+the number of partitions and it will ensure that all keys with the same hash will be in
+the same partition. This does NOT mean each key will have its own partition. This is called
+consistent hashing, where the key hash modulo the number of partitions defines the partition
+in which the record will be placed. Calling partitionBy will incur a shuffle but downstream
+operations will benefit from the co-located records.
+Consider an RDD with 3 partitions and no partitioner. The keys are not co-located. If we plan on
+doing keyed operations we'd be better off repartitioning so that all values for the
+same key are in the same partition. Simply call partitionby with a hash partitioner with
+the desired number of partitions. A shuffle will occur, but further keyed operations will
+be more efficient. Joining RDDs that have no partitioner will
+cause each executor to shuffle all values with the same key to a single machine, for
+both RDDs. If you’re repeatedly joining on the same RDD this is highly inefficient.
+The resulting RDD will use a HashPartitioner with the number of partitions equal to the
+largest RDD. If you need to join an RDD multiple times,
+a better option is to partition it. In this case, only the “right” RDD will get shuffled
+across the network to the corresponding partition from the “left” RDD.
+The best case scenario is that left and right RDDs are “co-partitioned” so they have
+similar keys and the same partitioner and same number of partitions. While a shuffle
+will still occur, if the partitions of different RDDs are on the same executor they won’t
+cross the network. In general this will generate the least amount of network I/O and latency.
+Resilience RDD’s describe a lineage of transformations
+that are lazily executed. As we’ve seen, each RDD depends on the parent. It describes
+some transformation to run over each partition of the parent RDD.
+Keeping this lineage allows us to reconstruct the results in the event of a failure. So
+if a partition is lost in an executor Spark only needs to recompute those lost partitions
+by walking up the lineage tree until it either reaches a root or persisted RDD.
+As an example, let's say we have two RDD's that are joined together.
+We then persist the RDD to memory. During the next operations, a reduceByKey
+and saveAsTextFile, a failure occurs and one of the partitions is lost.
+Spark is able to walk the RDD lineage until it finds the last known good state.
+Then it can recompute the lost partition. Note that is doesn't have to recompute every
+partition, just the one that was lost. Executing jobs
+Spark actions can be thought of in three stages. A Job is a sequence of transformations initiated
+by an action, like collect, reduce, etc. Jobs are broken down into stages, which in
+turn consist of tasks. The scheduler analyzes the whole RDD lineage
+and determines how to break the job into stages and tasks.
+Stage boundaries are defined by shuffle dependencies, i.e., when a join, repartition or other operation
+that causes a shuffle occurs. Transformations that cause a shuffle are also called wide
+dependencies. Tasks are then serialized and distributed
+to the executors. Tasks are the operations we’ve defined in
+our Driver program for that RDD. The closures (AKA lambdas) we wrote in our code will get
+serialized then deployed to each executor with the partition on which that task must
+execute. The important thing to remember here is the
+fact that the tasks must be serializable since they have to get sent over the network to
+the worker nodes. This includes the tasks themselves as well as any references they
+make to objects and variables within the Driver. You have to be careful that your tasks aren’t
+too large, for instance with large local variables (such as collections or maps). There are multiple
+costs associated with large tasks. The first is serialization and de-serialization
+cost. Also there is the network I/O for sending those tasks each time that transformation
+is executed. Finally large tasks may delay task launch times.

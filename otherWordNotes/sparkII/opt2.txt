@@ -1,0 +1,69 @@
+In this example we will see how aggregate functions are used, and also why group by
+key should be avoided. Consider the following use case: we want to calculate the average
+value for each key in an RDD. It could easily be done with group by key. Simply call group
+by key, then find the average for each key by dividing the sum by the number of elements.
+A better way to do it is with aggregate by key. Let's walk through the code. The initial
+zero-value accumulator is just 0, 0; a sum of zero for zero total values. The first function
+iterates all the values for a given key, adding it to the sum and increasing the count of
+the accumulator for that key by one. Then the second function combines the accumulators
+for a given key from each partition. Finally, we call mapValues in the same way as before
+to calculate the average per key. This diagram shows what happens using groupByKey.
+groupByKey causes a shuffle of ALL values across the network, even if they are already
+co-located within a partition, then calculates the average per key. In addition to the cost
+of network I/O you’re also using a lot more memory.
+In contrast, using aggregateByKey splits the calculation into two steps. Only one pair
+per key, per partition is shuffled, greatly reducing I/O and memory usage. Then the results
+from each partition are combined. Another example would be to get the first
+value of a sequence for each key. Again here you may be tempted to just groupByKey then
+run a map/mapValues and for each group just grab the head element. The problem once again
+is the impact to memory this will have with large data sets. A better solution is to use
+reduceByKey. As each pair of values is passed you can compare them and choose which record
+to keep. This will run efficiently over all keys in each partition without incurring a
+large memory overhead. Actions are blocking operations. That is,
+while transformations are lazily executed, once you call an action such as count, collect,
+for each, etcetera. your driver has to wait for it to finish. You can get around this
+with asynchronous operations. These are implemented as futures, so you can set a callback function
+to execute once they are completed. The basic actions provide corresponding async versions.
+You need to be aware that if you plan to executed multiple async operations that if you’re
+using the default FIFO job scheduler they will still complete serially. You’ll have
+to use the FAIR scheduler to compute the actions in parallel.
+Understanding the affect of certain operations on partitioning plays a large role in optimizing
+transformations. For example, let’s say we have a Pair RDD that is already hash partitioned
+by 2 partitions. If we run a map operation over all records we could potentially transform
+the keys of each record. Because of that, Spark has no way of knowing if the partitioned
+keys will match on the other side of the map operation. In this case the resulting RDD
+will actually no longer have a partitioner. This means even if we don’t alter the keys
+and they remain within the original partitions, when we run a reduceByKey a full shuffle is
+going to occur. If you just need to operate on the values
+of each key/pair, always use mapValues. This tells Spark that the hashed keys will remain
+in their partitions and we can keep the same partitioner across operations. The resulting
+reduceByKey will now be aware of the partitioning of the keys.
+When it comes time to output data from your Spark job you should use the standard save
+APIs whenever possible. However in some cases you may have custom logic or systems other
+than HDFS you need to integrate with. It’s important to understand the impact
+of using foreach versus foreachPartition. foreach will run your closure for each record
+individually. This is obviously not efficient when dealing with large volumes. foreachPartition
+is more appropriate. Your closure will run in parallel in each partition getting an Iterator
+for all records within that partition. If you need to save to a standard ODBC or
+JDBC database consider using the Hadoop DBOutputFormat along with the SparkContext saveAsHadoopDataset
+API. You’ll need to be careful with the level of parallelism and data volume so that
+you don’t overwhelm your database. For any custom output, such as sending to
+message queues or REST endpoints then definitely use foreachPartition. Remember to be aware
+of any serialization issues. It may be best to just initialize connections within the
+closure then send everything as one large message
+Broadcast variables allow the driver program to send a read-only value to all executors
+to reference. The broadcast variable can then be looked up by any RDD operations. This can
+often be used to avoid shuffling. Spark uses a BitTorrent protocol which provides
+peer-to-peer sharing of the broadcast variable between nodes. This improves network throughput
+and reduces the load on the driver. You may be tempted to just pass your data
+as a local variable closure. The problem here is that you will have to serialize, then transmit
+the whole serialized closure to each node running that task. This would greatly delay
+startup and waste space through duplication in every node.
+Here is an example using the trips and stations from the lab exercises. Normally, joining
+the start and end trips to stations would require three shuffles: one to repartition,
+and one for each join. By broadcasting the stations you can avoid shuffling entirely
+with some map operations. We’ll go over this in detail in the next lab.
+Having this lesson, you should be able to understand advanced RDD operations, identify
+what operations cause shuffling, understand how to avoid shuffling when possible, and
+work with key value pairs grouping, combining, and reducing. Proceed to exercise 3 and the
+next lesson.
