@@ -1,0 +1,23 @@
+MapReduce is the oldest technologies.
+Pig is slightly newer. PigLatin written on top of mappers and reducers
+link: https://www.quora.com/Is-Apache-Pig-dying => basically says that Spark is more what is used.
+latest releas: 19 June, 2017: release 0.17.0 available 
+Not actively maintained it seems.
+Pig Latin is sql like.
+extensivible w/ user defined functions
+Pig sits on top of hadoop allows you to run batch jobs.
+see tez_1_.png
+
+Can run w/ grunt scripts or through ambari/hue
+
+good referenceS for Pig: 
+1) https://data-flair.training/blogs/execute-pig-script
+2) https://pig.apache.org/docs/r0.17.0/basic.html
+
+LOAD STOR DUMP
+-- STORE ratings INTO 'outRaings' USING PigStorage(':');
+FILTER DISTINCT FOREACH/GENERATE MAPREDUCE STREAM SAMPLE
+JOIN COGROUP GROUP CROSS CUB
+-- COGROUP VARIATION OF JOIN
+ORDER RANK LIMIT
+UNION SPLIT
