@@ -1,0 +1,3 @@
+Some ppl start with Ambari to be able to install everythin that you might need.
+Can customize the dashboard etc.
+Not a real cluster right now so nothing to look at.

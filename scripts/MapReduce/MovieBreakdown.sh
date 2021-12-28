@@ -1,6 +1,6 @@
 #!/bin/bash
 python \
-/home/maria_dev/python/MovieBreakdown.py \
+/home/maria_dev/python/MapReduce/MovieBreakdown.py \
 -r hadoop \
 --hadoop-streaming-jar \
 /usr/hdp/current/hadoop-mapreduce-client/hadoop-streaming.jar \
