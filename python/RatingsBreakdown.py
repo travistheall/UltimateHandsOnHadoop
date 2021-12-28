@@ -1,7 +1,5 @@
-# importing neccessary map reduce classes from libraries
 from mrjob.job import MRJob
 from mrjob.step import MRStep
-
 
 class RatingsBreakdown(MRJob):
     """
@@ -27,30 +25,44 @@ class RatingsBreakdown(MRJob):
         yields:
             rating = 5,5...(the key being used)
             value = 1
-        output:
-            value = 21203
+        This creates a value list where len([1,1,1,...1]) => 21203 for rating 5
+        output that feeds into reducer:
+            value_generator = [1,1,1,...1] 21203
                 a generator object for each key value pair <generator object <genexpr> at 0x7f2ff881d780>
+                where [x for x in value_generator] => [1,1,1,...1]
             rating = "5"
                 a key to group the generator object by 
         """
-        (userID, movieID, rating, timestamp) = line.split('\t') # \t is a tab
+        (userID, movieID, rating, timestamp) = line.split("\t")
         value = 1
         yield rating, value
 
     def count_ratings(self, rating, value_generator):
         """ 
         inputs:
-            output from mapper_get_ratings
-            rating = number between 1-5
+            output from get_ratings
+            rating = string version of a number between 1-5
             value_generator = a generator object for each key value pair on going adds values
-            value_generator != value from mapper_get_ratings BUT a place where the value is placed.
+            value_generator != value from get_ratings BUT a place where the value is placed.
             value generator = [1,1,1,1,...etc] on going job until end
         yields:
-             key = rating
-             values = all the 1s added together
+             rating
+             summed_values = all the 1s added together
+
+        # value_list = [x for x in value_generator]
+        # print(value_list) => len([1,1,1,...1]) => 21203 for rating 5
+        # summed_values = sum(value_list)
         """
-        values = sum(value_generator)
-        yield rating, values
+        summed_values = sum(value_generator)
+        yield rating, summed_values
 
 if __name__ == '__main__':
     RatingsBreakdown.run()
+    """
+    output:
+    "4"     34174
+    "5"     21203
+    "1"     6111
+    "2"     11370
+    "3"     27145
+    """

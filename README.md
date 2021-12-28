@@ -37,6 +37,7 @@
       </ul>
       <li>scripts - directory for scripts to run python scripts</li>
     </ul>
+    <p>Code file comments very verbose and are for learning purposes</p>
   </div>
   <div>
     <h3>Outdated python and pip for ease of following along with course</h3>

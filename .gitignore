@@ -1,4 +1,6 @@
 .cache/
+.pki/
+.msvscode.hdinsight/
 .ssh/
 .vscode-server/
 .bash*
