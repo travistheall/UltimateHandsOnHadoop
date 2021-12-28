@@ -1,5 +1,5 @@
-SELECT movie_id, count(movie_id) as ratingCount
+SELECT movieid, count(movieid) as ratingCount
 FROM ratings
-GROUP BY movie_id
+GROUP BY movieid
 ORDER BY ratingCount
 DESC;

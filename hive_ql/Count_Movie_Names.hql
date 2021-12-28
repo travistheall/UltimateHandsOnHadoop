@@ -1,6 +1,7 @@
-SELECT n.name as movieName, count(r.movie_id) as ratingCount
+SELECT n.title, count(r.movieid) as ratingCount
 FROM ratings r
-JOIN movie_names n
-ON r.movie_id = n.movie_id
-GROUP BY n.name
+JOIN names n
+ON r.movieid = n.movieid
+GROUP BY n.title
+HAVING ratingCount > 10
 ORDER BY ratingCount DESC;
