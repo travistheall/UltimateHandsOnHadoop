@@ -1,4 +1,6 @@
 FLUSH PRIVILEGES;
 ALTER USER 'root'@'localhost' IDENTIFIED BY 'hadoop';
+CREATE USER ''@'localhost' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON movielens.* TO ''@'localhost';
 FLUSH PRIVILEGES;
 QUIT;
